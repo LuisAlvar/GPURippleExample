@@ -3,7 +3,8 @@
 #include <stdio.h>
 #include "cpu_anim.h"
 
-#define DIM 1280
+#define DIMX 1360
+#define DIMY 768
 
 /// <summary>
 /// 
@@ -20,18 +21,22 @@ __global__ void kernel(unsigned char* ptr, int ticks)
 	//Using (x,y) to determine the linearize index 
 	int linear_offset = x + y * blockDim.x * gridDim.x;
 
-	//now caluclate the value at that position 
-	float fx = x - DIM / 2;
-	float fy = y - DIM / 2;
-	float d = sqrtf(fx * fx + fy * fy);
+	if (linear_offset < (DIMX * DIMY))
+	{
+		//now caluclate the value at that position 
+		float fx = x - DIMX / 2;
+		float fy = y - DIMY / 2;
+		float d = sqrtf(fx * fx + fy * fy);
 
-	unsigned char grey = (unsigned char)(128.0f + 127.0f * cos(d / 10.0f - ticks / 7.0f) / (d / 10.0f + 1.0f));
+		unsigned char grey = (unsigned char)(128.0f + 127.0f * cos(d / 10.0f - ticks / 7.0f) / (d / 10.0f + 1.0f));
 
-	ptr[linear_offset * 4 + 0] = grey;
-	ptr[linear_offset * 4 + 1] = grey;
-	ptr[linear_offset * 4 + 2] = grey;
-	ptr[linear_offset * 4 + 3] = 255;
-	 
+		ptr[linear_offset * 4 + 0] = grey;
+		ptr[linear_offset * 4 + 1] = grey;
+		ptr[linear_offset * 4 + 2] = grey;
+		ptr[linear_offset * 4 + 3] = 255;
+
+	}
+
 }
 
 
@@ -47,7 +52,7 @@ void cleanup(DataBlock *d){
 
 //This function will be called by the strucutre every time it wants to generate a new frame of the animation.  
 void generate_frame(DataBlock *d, int ticks) {
-	dim3 blocks(DIM/16, DIM/16);
+	dim3 blocks( (DIMX + 15)/16, (DIMY + 15)/16);
 	dim3 threads(16, 16);
 
 	kernel<<< blocks, threads >>>(d->dev_bitmap, ticks);
@@ -59,7 +64,7 @@ int main( void )
 {
 
 	DataBlock data;
-	CPUAnimBitmap bitmap(DIM,DIM, &data);
+	CPUAnimBitmap bitmap(DIMX,DIMY, &data);
 	data.bitmap = &bitmap;
 
 	cudaMalloc( (void**)&data.dev_bitmap, bitmap.image_size() );
